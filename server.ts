@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import BusinessApply from './src/routes/BusinessApply';
-import treasureApply from './src/routes/treasureApply';
+import treasureApply from './src/routes/TreasureApply';
 
 dotenv.config();
 
