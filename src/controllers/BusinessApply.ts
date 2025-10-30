@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable no-console */
 import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';

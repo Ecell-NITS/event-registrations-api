@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable no-console */
 /* eslint-disable prettier/prettier */
 import express from 'express';
@@ -5,7 +6,7 @@ import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import BusinessApply from './src/routes/BusinessApply';
-import treasureApply from './src/routes/treasureApply';
+import treasureApply from './src/routes/TreasureApply';
 
 dotenv.config();
 
