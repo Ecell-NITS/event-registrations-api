@@ -7,9 +7,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+
+model EventApplication {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  email      String   @unique
+  phone      String
+  college    String
+  ideaBrief  String
+  teamName   String
+  createdAt  DateTime @default(now())
+}
+
+model TreasureApplication {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
   email     String   @unique
-  name      String?
+  phone     String
+  college   String
+  ideaBrief String
+  teamName  String
   createdAt DateTime @default(now())
 }
+
