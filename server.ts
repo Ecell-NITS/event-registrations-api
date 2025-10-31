@@ -6,7 +6,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import BusinessApply from './src/routes/BusinessApply';
 import treasureApply from './src/routes/treasureApply';
-import BidWiseApply from './src//routes/Bid-Wise';
+import BidWiseApply from './src/routes/Bid-Wise';
 import AdovationApply from './src/routes/Adovations'
 
 dotenv.config();
