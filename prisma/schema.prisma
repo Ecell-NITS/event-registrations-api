@@ -30,3 +30,58 @@ model TreasureApplication {
   createdAt DateTime @default(now())
 }
 
+model BidWise {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventId   String
+  teamName  String
+  college   String
+  leader    Leader
+  members   Member[]
+  createdAt DateTime @default(now())
+}
+
+type Leader {
+  fullName  String
+  email     String
+  contact   String
+  scholarId String
+}
+
+type Member {
+  fullName  String
+  email     String
+  scholarId String
+}
+
+model Adovation {
+  id        String            @id @default(auto()) @map("_id") @db.ObjectId
+  teamName  String
+  college   String
+
+  leader    AdovationLeader?
+  members   AdovationMember[]
+
+  createdAt DateTime          @default(now())
+}
+
+model AdovationLeader {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  fullName    String
+  email       String    @unique
+  contact     String
+  scholarId   String
+
+  adovation   Adovation @relation(fields: [adovationId], references: [id], onDelete: Cascade)
+  adovationId String    @db.ObjectId
+}
+
+model AdovationMember {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  fullName    String
+  email       String
+  contact     String
+  scholarId   String
+
+  adovation   Adovation @relation(fields: [adovationId], references: [id], onDelete: Cascade)
+  adovationId String    @db.ObjectId
+}

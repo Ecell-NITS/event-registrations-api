@@ -6,6 +6,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import BusinessApply from './src/routes/BusinessApply';
 import treasureApply from './src/routes/treasureApply';
+import BidWiseApply from './src//routes/Bid-Wise';
+import AdovationApply from './src/routes/Adovations'
 
 dotenv.config();
 
@@ -34,3 +36,9 @@ app.listen(PORT, () => {
 
 app.use('/BusinessApply', BusinessApply);
 app.use('treasureApply', treasureApply);
+app.use('/bidwise',  BidWiseApply );
+
+
+app.use('/adovation',AdovationApply);
+
+
