@@ -2,6 +2,10 @@
 /* eslint-disable no-console */
 import nodemailer from 'nodemailer';
 
+if (!process.env.EMAIL_ECELL || !process.env.EMAIL_PWD_ECELL) {
+  throw new Error('Email credentials are missing in environment variables');
+}
+
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -10,22 +14,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = (to: any, subject: string, text: string, html: undefined) => {
-  const mailOptions = {
-    from: process.env.EMAIL_ECELL,
-    to: to,
-    subject: subject,
-    text: text,
-    html: html,
-  };
-
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.log('Error sending email:', error);
-    } else {
-      console.log('Email sent:', info.response);
-    }
-  });
+const sendEmail = async (to: string, subject: string, text: string, html: string) => {
+  try {
+    const info = await transporter.sendMail({
+      from: `"E-Cell NIT Silchar" <${process.env.EMAIL_ECELL}>`,
+      to,
+      subject,
+      text,
+      html,
+    });
+    console.log('Email sent:', info.response);
+    return true;
+  } catch (error) {
+    console.error('Error sending email:', error);
+    return false;
+  }
 };
 
 export default sendEmail;

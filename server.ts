@@ -8,6 +8,7 @@ import BusinessApply from './src/routes/BusinessApply';
 import treasureApply from './src/routes/TreasureApply';
 import BidWiseApply from './src/routes/Bid-Wise';
 import AdovationApply from './src/routes/Adovations';
+import verifyOTP from './src/routes/verifyOTP';
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.use('/business', BusinessApply);
 app.use('/treasure', treasureApply);
 app.use('/bid-wise', BidWiseApply);
 app.use('/adovations', AdovationApply);
+app.use('/verification', verifyOTP);
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
