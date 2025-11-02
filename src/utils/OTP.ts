@@ -134,6 +134,7 @@ export const verifyOtp = async (req: Request, res: Response) => {
       return;
     }
     if (otpData.otp === otp) {
+      res.status(200).json({ message: 'OTP verified successfully' });
       await prisma.otp.delete({
         where: {
           id: otpData.id,
