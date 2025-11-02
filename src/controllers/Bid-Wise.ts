@@ -98,44 +98,39 @@ export const createBidWiseApplication = async (req: Request, res: Response) => {
       })),
     ];
 
-    for (const member of allMembers) {
-      const existingMember = await prisma.bidWiseMembers.findFirst({
-        where: {
-          OR: [
-            { memberPhone: member.phone, memberName: member.name },
-            { memberPhone: member.phone },
-            { memberName: member.name, memberPhone: member.phone },
-          ],
-        },
-      });
-
-      if (existingMember) {
-        return res.status(400).json({
-          message: `Team member "${member.name}" is already registered with team "${existingMember.teamName}" for this event.`,
-        });
-      }
-    }
-
-    // Create a new application entry
-    const newApp = await prisma.bidWise.create({
-      data: {
-        teamName,
-        teamLeaderName,
-        teamLeaderEmail,
-        teamLeaderPhone,
-        teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
-        collegeType,
-        collegeName: collegeType === 'other' ? collegeName : null,
-        department,
-        year,
-        teamMembers: teamMembers.map((member: TeamMember) => ({
-          name: member.name,
-          phone: member.phone,
-        })),
+    const existingMembers = await prisma.bidWiseMembers.findMany({
+      where: {
+        memberPhone: { in: allMembers.map(m => m.phone) },
       },
     });
 
-    if (newApp) {
+    if (existingMembers.length > 0) {
+      const conflict = existingMembers[0];
+      return res.status(400).json({
+        message: `Member "${conflict.memberName}" is already registered with team "${conflict.teamName}".`,
+      });
+    }
+
+    // Create a new application entry
+    const newApp = await prisma.$transaction(async tx => {
+      const createdApp = await tx.bidWise.create({
+        data: {
+          teamName,
+          teamLeaderName,
+          teamLeaderEmail,
+          teamLeaderPhone,
+          teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
+          collegeType,
+          collegeName: collegeType === 'other' ? collegeName : null,
+          department,
+          year,
+          teamMembers: teamMembers.map((member: TeamMember) => ({
+            name: member.name,
+            phone: member.phone,
+          })),
+        },
+      });
+
       // Store all team members in the BidWiseMembers collection
       const memberRecords = allMembers.map(member => ({
         memberName: member.name,
@@ -147,7 +142,10 @@ export const createBidWiseApplication = async (req: Request, res: Response) => {
       await prisma.bidWiseMembers.createMany({
         data: memberRecords,
       });
+      return createdApp;
+    });
 
+    if (newApp) {
       const subject = 'BID-WISE Registration Successful';
       const text = `Thank you for registering for BID-WISE! Your team "${teamName}" has been successfully registered.
       We've received your registration and will get back to you soon with further details.
@@ -228,8 +226,11 @@ export const createBidWiseApplication = async (req: Request, res: Response) => {
     </table>
   </body>
 </html>`;
-
-      sendEmail(teamLeaderEmail, subject, text, html);
+      try {
+        await sendEmail(teamLeaderEmail, subject, text, html);
+      } catch (emailError) {
+        console.error('Error sending email for Bid-Wise Registration:', emailError);
+      }
 
       res.status(200).json({
         message: 'Registration submitted successfully!',
