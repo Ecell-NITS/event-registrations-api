@@ -98,45 +98,38 @@ export const createBusinessHackathonApplication = async (req: Request, res: Resp
       })),
     ];
 
-    for (const member of allMembers) {
-      const existingMember = await prisma.businessHackathonMembers.findFirst({
-        where: {
-          OR: [
-            { memberPhone: member.phone, memberName: member.name },
-            { memberPhone: member.phone },
-            { memberName: member.name, memberPhone: member.phone },
-          ],
-        },
+    const existingMembers = await prisma.businessHackathonMembers.findMany({
+      where: {
+        memberPhone: { in: allMembers.map(m => m.phone) },
+      },
+    });
+    if (existingMembers.length > 0) {
+      const conflict = existingMembers[0];
+      return res.status(400).json({
+        message: `Member "${conflict.memberName}" is already registered with team "${conflict.teamName}".`,
       });
-
-      if (existingMember) {
-        return res.status(400).json({
-          message: `Team member "${member.name}" is already registered with team "${existingMember.teamName}" for this event.`,
-        });
-      }
     }
 
     // Create a new application entry
-    const newApp = await prisma.businessHackathon.create({
-      data: {
-        teamName,
-        teamLeaderName,
-        teamLeaderEmail,
-        teamLeaderPhone,
-        teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
-        collegeType,
-        collegeName: collegeType === 'other' ? collegeName : null,
-        department,
-        year,
-        teamMembers: teamMembers.map((member: TeamMember) => ({
-          name: member.name,
-          phone: member.phone,
-          scholarId: collegeType === 'nit_silchar' ? member.scholarId : null,
-        })),
-      },
-    });
-
-    if (newApp) {
+    const newApp = await prisma.$transaction(async tx => {
+      const createdApp = await tx.businessHackathon.create({
+        data: {
+          teamName,
+          teamLeaderName,
+          teamLeaderEmail,
+          teamLeaderPhone,
+          teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
+          collegeType,
+          collegeName: collegeType === 'other' ? collegeName : null,
+          department,
+          year,
+          teamMembers: teamMembers.map((member: TeamMember) => ({
+            name: member.name,
+            phone: member.phone,
+            scholarId: collegeType === 'nit_silchar' ? member.scholarId : null,
+          })),
+        },
+      });
       // Store all team members in the BusinessHackathonMembers collection
       const memberRecords = allMembers.map(member => ({
         memberName: member.name,
@@ -149,6 +142,10 @@ export const createBusinessHackathonApplication = async (req: Request, res: Resp
         data: memberRecords,
       });
 
+      return createdApp;
+    });
+
+    if (newApp) {
       const subject = 'Business Hackathon Registration Successful';
       const text = `Thank you for registering for the Business Hackathon! Your team "${teamName}" has been successfully registered.
       We've received your registration and will get back to you soon with further details.
@@ -229,8 +226,11 @@ export const createBusinessHackathonApplication = async (req: Request, res: Resp
     </table>
   </body>
 </html>`;
-
-      sendEmail(teamLeaderEmail, subject, text, html);
+      try {
+        await sendEmail(teamLeaderEmail, subject, text, html);
+      } catch (error) {
+        console.error('Error sending email for Business Hackathon Registration:', error);
+      }
 
       res.status(200).json({
         message: 'Registration submitted successfully!',
@@ -272,9 +272,3 @@ export const getSingleBusinessHackathonApplication = async (req: Request, res: R
     res.status(500).json({ message: 'Error fetching application.' });
   }
 };
-
-// Legacy functions for backward compatibility
-export const getEventApplications = getBusinessHackathonApplications;
-export const createEventApplication = createBusinessHackathonApplication;
-export const checkEventApplication = checkBusinessHackathonApplication;
-export const getSingleEventApplication = getSingleBusinessHackathonApplication;
