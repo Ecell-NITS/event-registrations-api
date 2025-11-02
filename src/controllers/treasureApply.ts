@@ -98,59 +98,71 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
       return res.status(400).json({ message: 'You have already registered for this event.' });
     }
 
-    // Check if any team member (including leader and vice captain) is already registered for this event
-    const allMembers = [
-      { name: teamLeaderName, phone: teamLeaderPhone, email: teamLeaderEmail },
-      { name: teamViceCaptainName, phone: teamViceCaptainPhone, email: null },
-      ...teamMembers.map((member: TeamMember) => ({
-        name: member.name,
-        phone: null, // Treasure hunt members don't have phone in the original schema
-        email: null,
-      })),
-    ];
-
-    for (const member of allMembers) {
-      const existingMember = await prisma.treasureHuntMembers.findFirst({
-        where: {
-          OR: [
-            { memberName: member.name, memberPhone: member.phone },
-            { memberName: member.name },
-            ...(member.phone ? [{ memberPhone: member.phone }] : []),
-          ],
-        },
-      });
-
-      if (existingMember) {
-        return res.status(400).json({
-          message: `Team member "${member.name}" is already registered with team "${existingMember.teamName}" for this event.`,
-        });
-      }
-    }
-
-    // Create a new application entry
-    const newApp = await prisma.treasureHunt.create({
-      data: {
-        teamName,
-        teamLeaderName,
-        teamLeaderEmail,
-        teamLeaderPhone,
-        teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
-        teamViceCaptainName,
-        teamViceCaptainPhone,
-        teamViceCaptainScholarId: collegeType === 'nit_silchar' ? teamViceCaptainScholarId : null,
-        collegeType,
-        collegeName: collegeType === 'other' ? collegeName : null,
-        department,
-        year,
-        teamMembers: teamMembers.map((member: TeamMember) => ({
-          name: member.name,
-          scholarId: collegeType === 'nit_silchar' ? member.scholarId : null,
-        })),
-      },
+    //Run a check to see if vice captain is already registered
+    const existingViceCaptain = await prisma.treasureHunt.findFirst({
+      where: { teamViceCaptainPhone },
     });
 
-    if (newApp) {
-      // Store all team members in the TreasureHuntMembers collection
+    if (existingViceCaptain) {
+      return res
+        .status(400)
+        .json({ message: 'The vice captain is already registered with another team.' });
+    }
+
+    //NOT REQUIRED AS TEAM MEMBERS NAME CAN BE SAME IN DIFFERENT TEAMS
+    // // Check if any team member (including leader and vice captain) is already registered for this event
+    // const allMembers = [
+    //   { name: teamLeaderName, phone: teamLeaderPhone, email: teamLeaderEmail },
+    //   { name: teamViceCaptainName, phone: teamViceCaptainPhone, email: null },
+    //   ...teamMembers.map((member: TeamMember) => ({
+    //     name: member.name,
+    //     phone: null, // Treasure hunt members don't have phone in the original schema
+    //     email: null,
+    //   })),
+    // ];
+
+    // for (const member of allMembers) {
+    //   const existingMember = await prisma.treasureHuntMembers.findFirst({
+    //     where: {
+    //       OR: [
+    //         { memberName: member.name, memberPhone: member.phone },
+    //         { memberName: member.name },
+    //         ...(member.phone ? [{ memberPhone: member.phone }] : []),
+    //       ],
+    //     },
+    //   });
+
+    //   if (existingMember) {
+    //     return res.status(400).json({
+    //       message: `Team member "${member.name}" is already registered with team "${existingMember.teamName}" for this event.`,
+    //     });
+    //   }
+    // }
+    //NOT REQUIRED AS TEAM MEMBERS NAME CAN BE SAME IN DIFFERENT TEAMS
+
+    // Create a new application entry
+
+    const result = await prisma.$transaction(async tx => {
+      const newApp = await tx.treasureHunt.create({
+        data: {
+          teamName,
+          teamLeaderName,
+          teamLeaderEmail,
+          teamLeaderPhone,
+          teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
+          teamViceCaptainName,
+          teamViceCaptainPhone,
+          teamViceCaptainScholarId: collegeType === 'nit_silchar' ? teamViceCaptainScholarId : null,
+          collegeType,
+          collegeName: collegeType === 'other' ? collegeName : null,
+          department,
+          year,
+          teamMembers: teamMembers.map((member: TeamMember) => ({
+            name: member.name,
+            scholarId: collegeType === 'nit_silchar' ? member.scholarId : null,
+          })),
+        },
+      });
       const membersToStore = [
         {
           memberName: teamLeaderName,
@@ -171,18 +183,19 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
           teamName,
         })),
       ];
-
-      await prisma.treasureHuntMembers.createMany({
+      await tx.treasureHuntMembers.createMany({
         data: membersToStore,
       });
+      return newApp;
+    });
 
-      const subject = 'Treasure Hunt Registration Successful';
-      const text = `Thank you for registering for the Treasure Hunt! Your team "${teamName}" has been successfully registered.
+    const subject = 'Treasure Hunt Registration Successful';
+    const text = `Thank you for registering for the Treasure Hunt! Your team "${teamName}" has been successfully registered.
       We've received your registration and will get back to you soon with further details.
       Meanwhile, you can join our WhatsApp group for updates:
       <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE">Join Group</a>
       Best of luck.E-Cell NIT SilcharTeam`;
-      const html = `
+    const html = `
 <!DOCTYPE html>
 <html lang="en" style="margin:0;padding:0;">
   <head>
@@ -197,7 +210,7 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
       <!-- HEADER -->
       <tr>
         <td style="background-color:#224259;text-align:center;padding:24px 16px;">
-          <img src="https://res.cloudinary.com/dp92qug2f/image/upload/v1678341163/Ecell%20website/ecell-logo-bw2_sayvqp.webp" alt="E-Cell NIT Silchar" width="60" style="margin-bottom:10px;">
+          <img src="https://res.cloudinary.com/ecell/image/upload/v1762102444/ecell-logo-bw2_sayvqp_htrv0f.png" alt="E-Cell NIT Silchar" width="60" style="margin-bottom:10px;">
           <h2 style="color:#ffffff;margin:0;font-size:20px;letter-spacing:0.5px;">E-Cell NIT Silchar</h2>
           <p style="color:#cfd8e3;margin:5px 0 0;font-size:14px;">Treasure Hunt 2025</p>
         </td>
@@ -242,13 +255,13 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
           <p style="margin:0;">© ${new Date().getFullYear()} E-Cell NIT Silchar. All rights reserved.</p>
           <div style="margin-top:8px;">
             <a href="https://www.instagram.com/ecell.nitsilchar" style="margin:0 6px;">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" width="20" alt="Instagram" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/2048px-Instagram_logo_2016.svg.png" width="20" alt="Instagram" />
             </a>
             <a href="https://www.linkedin.com/company/ecell-nit-silchar" style="margin:0 6px;">
               <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/500px-LinkedIn_logo_initials.png" width="20" alt="LinkedIn" />
             </a>
             <a href="https://www.facebook.com/ecell.nit.silchar/" style="margin:0 6px;">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/1/1b/Facebook_icon.svg" width="20" alt="Facebook" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Logo_de_Facebook.png/1028px-Logo_de_Facebook.png" width="20" alt="Facebook" />
             </a>
           </div>
         </td>
@@ -256,13 +269,15 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
     </table>
   </body>
 </html>`;
-      sendEmail(teamLeaderEmail, subject, text, html);
-
-      res.status(200).json({
-        message: 'Registration submitted successfully!',
-        registration: newApp,
-      });
+    try {
+      await sendEmail(teamLeaderEmail, subject, text, html);
+    } catch (error) {
+      console.error('Error sending email for Treasure Hunt Registration:', error);
     }
+    res.status(200).json({
+      message: 'Registration submitted successfully!',
+      registration: result,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Something went wrong!' });

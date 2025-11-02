@@ -169,7 +169,7 @@ export const createBidWiseApplication = async (req: Request, res: Response) => {
       <!-- HEADER -->
       <tr>
         <td style="background-color:#224259;text-align:center;padding:24px 16px;">
-          <img src="https://res.cloudinary.com/dp92qug2f/image/upload/v1678341163/Ecell%20website/ecell-logo-bw2_sayvqp.webp" alt="E-Cell NIT Silchar" width="60" style="margin-bottom:10px;">
+          <img src="https://res.cloudinary.com/ecell/image/upload/v1762102444/ecell-logo-bw2_sayvqp_htrv0f.png" alt="E-Cell NIT Silchar" width="60" style="margin-bottom:10px;">
           <h2 style="color:#ffffff;margin:0;font-size:20px;letter-spacing:0.5px;">E-Cell NIT Silchar</h2>
           <p style="color:#cfd8e3;margin:5px 0 0;font-size:14px;">BID-WISE 2025</p>
         </td>
@@ -214,13 +214,13 @@ export const createBidWiseApplication = async (req: Request, res: Response) => {
           <p style="margin:0;">© ${new Date().getFullYear()} E-Cell NIT Silchar. All rights reserved.</p>
           <div style="margin-top:8px;">
             <a href="https://www.instagram.com/ecell.nitsilchar" style="margin:0 6px;">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" width="20" alt="Instagram" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Instagram_logo_2016.svg/2048px-Instagram_logo_2016.svg.png" width="20" alt="Instagram" />
             </a>
             <a href="https://www.linkedin.com/company/ecell-nit-silchar" style="margin:0 6px;">
               <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/LinkedIn_logo_initials.png/500px-LinkedIn_logo_initials.png" width="20" alt="LinkedIn" />
             </a>
             <a href="https://www.facebook.com/ecell.nit.silchar/" style="margin:0 6px;">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/1/1b/Facebook_icon.svg" width="20" alt="Facebook" />
+              <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Logo_de_Facebook.png/1028px-Logo_de_Facebook.png" width="20" alt="Facebook" />
             </a>
           </div>
         </td>
