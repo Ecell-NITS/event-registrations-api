@@ -1,22 +1,17 @@
 import express from 'express';
 import {
-  getEventApplications,
-  createEventApplication,
-  checkEventApplication,
-  getSingleEventApplication,
-  deleteEventApplication,
+  getBusinessHackathonApplications,
+  createBusinessHackathonApplication,
+  checkBusinessHackathonApplication,
+  getSingleBusinessHackathonApplication,
 } from '../controllers/BusinessApply';
 
 const router = express.Router();
 
-router.get('/', getEventApplications);
-
-router.post('/apply', createEventApplication);
-
-router.post('/check', checkEventApplication);
-
-router.post('/get', getSingleEventApplication);
-
-router.delete('/delete', deleteEventApplication);
+// New routes for Business Hackathon
+router.get('/all', getBusinessHackathonApplications);
+router.post('/register', createBusinessHackathonApplication);
+router.post('/check', checkBusinessHackathonApplication);
+router.post('/single', getSingleBusinessHackathonApplication);
 
 export default router;

@@ -7,26 +7,144 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
-model EventApplication {
-  id    String @id @default(auto()) @map("_id") @db.ObjectId
-  name       String
-  email      String   @unique
-  phone      String
-  college    String
-  ideaBrief  String
-  teamName   String
-  createdAt  DateTime @default(now())
+// Business Hackathon Event (Event ID: 1)
+model BusinessHackathon {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamName              String
+  teamLeaderName        String
+  teamLeaderEmail       String   @unique
+  teamLeaderPhone       String
+  teamLeaderScholarId   String?
+  collegeType           String   // "nit_silchar" or "other"
+  collegeName           String?  // Required if collegeType is "other"
+  department            String?
+  year                  String?
+  teamMembers           BusinessTeamMember[]
+  createdAt             DateTime @default(now())
 }
 
-model TreasureApplication {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+type BusinessTeamMember {
   name      String
-  email     String   @unique
   phone     String
-  college   String
-  ideaBrief String
-  teamName  String
-  createdAt DateTime @default(now())
+  scholarId String?
 }
 
+// Treasure Hunt Event (Event ID: 2)
+model TreasureHunt {
+  id                        String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamName                  String
+  teamLeaderName            String
+  teamLeaderEmail           String   @unique
+  teamLeaderPhone           String
+  teamLeaderScholarId       String?
+  teamViceCaptainName       String
+  teamViceCaptainPhone      String
+  teamViceCaptainScholarId  String?
+  collegeType               String   // "nit_silchar" or "other"
+  collegeName               String?  // Required if collegeType is "other"
+  department                String?
+  year                      String?
+  teamMembers               TreasureTeamMember[]
+  createdAt                 DateTime @default(now())
+}
+
+type TreasureTeamMember {
+  name      String
+  scholarId String?
+}
+
+// BID-WISE Event (Event ID: 3)
+model BidWise {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamName              String
+  teamLeaderName        String
+  teamLeaderEmail       String   @unique
+  teamLeaderPhone       String
+  teamLeaderScholarId   String?
+  collegeType           String   // "nit_silchar" or "other"
+  collegeName           String?  // Required if collegeType is "other"
+  department            String?
+  year                  String?
+  teamMembers           BidWiseTeamMember[]
+  createdAt             DateTime @default(now())
+}
+
+type BidWiseTeamMember {
+  name  String
+  phone String
+}
+
+// Adovation Event (Event ID: 4)
+model Adovation {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamName              String
+  teamLeaderName        String
+  teamLeaderEmail       String   @unique
+  teamLeaderPhone       String
+  teamLeaderScholarId   String?
+  collegeType           String   // "nit_silchar" or "other"
+  collegeName           String?  // Required if collegeType is "other"
+  department            String?
+  year                  String?
+  teamMembers           AdovationTeamMember[]
+  createdAt             DateTime @default(now())
+}
+
+type AdovationTeamMember {
+  name      String
+  phone     String
+  scholarId String?
+}
+
+// Team Member Collections for validation
+// Business Hackathon Members
+model BusinessHackathonMembers {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  memberName            String
+  memberEmail           String?
+  memberPhone           String
+  teamName              String
+  createdAt             DateTime @default(now())
+  
+  // Compound index to prevent duplicate registrations
+  @@unique([memberPhone, memberName])
+}
+
+// Treasure Hunt Members
+model TreasureHuntMembers {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  memberName            String
+  memberEmail           String?
+  memberPhone           String?
+  teamName              String
+  createdAt             DateTime @default(now())
+  
+  // Compound index to prevent duplicate registrations
+  @@unique([memberName, memberPhone])
+}
+
+// BID-WISE Members
+model BidWiseMembers {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  memberName            String
+  memberEmail           String?
+  memberPhone           String
+  teamName              String
+  createdAt             DateTime @default(now())
+  
+  // Compound index to prevent duplicate registrations
+  @@unique([memberPhone, memberName])
+}
+
+// Adovation Members
+model AdovationMembers {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  memberName            String
+  memberEmail           String?
+  memberPhone           String
+  teamName              String
+  createdAt             DateTime @default(now())
+  
+  // Compound index to prevent duplicate registrations
+  @@unique([memberPhone, memberName])
+}

@@ -10,10 +10,10 @@ interface TeamMember {
   scholarId?: string;
 }
 
-// Fetch all treasure hunt applications
-export const getTreasureHuntApplications = async (req: Request, res: Response) => {
+// Fetch all Adovation applications
+export const getAdovationApplications = async (req: Request, res: Response) => {
   try {
-    const applications = await prisma.treasureHunt.findMany();
+    const applications = await prisma.adovation.findMany();
     res.json(applications);
   } catch (error) {
     console.error(error);
@@ -21,17 +21,14 @@ export const getTreasureHuntApplications = async (req: Request, res: Response) =
   }
 };
 
-// Create a new treasure hunt application
-export const createTreasureHuntApplication = async (req: Request, res: Response) => {
+// Create a new Adovation application
+export const createAdovationApplication = async (req: Request, res: Response) => {
   const {
     teamName,
     teamLeaderName,
     teamLeaderEmail,
     teamLeaderPhone,
     teamLeaderScholarId,
-    teamViceCaptainName,
-    teamViceCaptainPhone,
-    teamViceCaptainScholarId,
     collegeType,
     collegeName,
     department,
@@ -41,14 +38,7 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
 
   try {
     // Validate required fields
-    if (
-      !teamName ||
-      !teamLeaderName ||
-      !teamLeaderEmail ||
-      !teamLeaderPhone ||
-      !teamViceCaptainName ||
-      !teamViceCaptainPhone
-    ) {
+    if (!teamName || !teamLeaderName || !teamLeaderEmail || !teamLeaderPhone) {
       return res.status(400).json({ message: 'Required fields are missing.' });
     }
 
@@ -72,15 +62,15 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
       return res.status(400).json({ message: 'Please enter a valid 10-digit phone number.' });
     }
 
-    // Team size validation (2-4 members including leader)
-    if (!teamMembers || teamMembers.length < 1 || teamMembers.length > 3) {
-      return res.status(400).json({ message: 'Team must have 2-4 members (including leader).' });
+    // Team size validation (3-5 members including leader)
+    if (!teamMembers || teamMembers.length < 2 || teamMembers.length > 4) {
+      return res.status(400).json({ message: 'Team must have 3-5 members (including leader).' });
     }
 
     // Validate team members
     for (const member of teamMembers) {
-      if (!member.name) {
-        return res.status(400).json({ message: 'All team members must have a name.' });
+      if (!member.name || !member.phone) {
+        return res.status(400).json({ message: 'All team members must have name and phone.' });
       }
       if (collegeType === 'nit_silchar' && !member.scholarId) {
         return res
@@ -90,7 +80,7 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
     }
 
     // Prevent duplicate submissions
-    const existing = await prisma.treasureHunt.findFirst({
+    const existing = await prisma.adovation.findFirst({
       where: { teamLeaderEmail },
     });
 
@@ -98,24 +88,23 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
       return res.status(400).json({ message: 'You have already registered for this event.' });
     }
 
-    // Check if any team member (including leader and vice captain) is already registered for this event
+    // Check if any team member (including leader) is already registered for this event
     const allMembers = [
       { name: teamLeaderName, phone: teamLeaderPhone, email: teamLeaderEmail },
-      { name: teamViceCaptainName, phone: teamViceCaptainPhone, email: null },
       ...teamMembers.map((member: TeamMember) => ({
         name: member.name,
-        phone: null, // Treasure hunt members don't have phone in the original schema
-        email: null,
+        phone: member.phone,
+        email: member.email || null,
       })),
     ];
 
     for (const member of allMembers) {
-      const existingMember = await prisma.treasureHuntMembers.findFirst({
+      const existingMember = await prisma.adovationMembers.findFirst({
         where: {
           OR: [
+            { memberPhone: member.phone, memberName: member.name },
+            { memberPhone: member.phone },
             { memberName: member.name, memberPhone: member.phone },
-            { memberName: member.name },
-            ...(member.phone ? [{ memberPhone: member.phone }] : []),
           ],
         },
       });
@@ -128,57 +117,41 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
     }
 
     // Create a new application entry
-    const newApp = await prisma.treasureHunt.create({
+    const newApp = await prisma.adovation.create({
       data: {
         teamName,
         teamLeaderName,
         teamLeaderEmail,
         teamLeaderPhone,
         teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
-        teamViceCaptainName,
-        teamViceCaptainPhone,
-        teamViceCaptainScholarId: collegeType === 'nit_silchar' ? teamViceCaptainScholarId : null,
         collegeType,
         collegeName: collegeType === 'other' ? collegeName : null,
         department,
         year,
         teamMembers: teamMembers.map((member: TeamMember) => ({
           name: member.name,
+          phone: member.phone,
           scholarId: collegeType === 'nit_silchar' ? member.scholarId : null,
         })),
       },
     });
 
     if (newApp) {
-      // Store all team members in the TreasureHuntMembers collection
-      const membersToStore = [
-        {
-          memberName: teamLeaderName,
-          memberEmail: teamLeaderEmail,
-          memberPhone: teamLeaderPhone,
-          teamName,
-        },
-        {
-          memberName: teamViceCaptainName,
-          memberEmail: null,
-          memberPhone: teamViceCaptainPhone,
-          teamName,
-        },
-        ...teamMembers.map((member: TeamMember) => ({
-          memberName: member.name,
-          memberEmail: null,
-          memberPhone: null,
-          teamName,
-        })),
-      ];
+      // Store all team members in the AdovationMembers collection
+      const memberRecords = allMembers.map(member => ({
+        memberName: member.name,
+        memberEmail: member.email,
+        memberPhone: member.phone,
+        teamName: teamName,
+      }));
 
-      await prisma.treasureHuntMembers.createMany({
-        data: membersToStore,
+      await prisma.adovationMembers.createMany({
+        data: memberRecords,
       });
 
-      const subject = 'Treasure Hunt Registration Successful';
+      const subject = 'Adovation Registration Successful';
       const text = `
-      <h3>Thank you for registering for the Treasure Hunt!</h3>
+      <h3>Thank you for registering for Adovation!</h3>
       <p>Your team "${teamName}" has been successfully registered.</p>
       <p>We've received your registration and will get back to you soon with further details.</p>
       <p>Meanwhile, you can join our WhatsApp group for updates:
@@ -200,11 +173,11 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
 };
 
 // Check if a user has already applied
-export const checkTreasureHuntApplication = async (req: Request, res: Response) => {
+export const checkAdovationApplication = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   try {
-    const app = await prisma.treasureHunt.findFirst({
+    const app = await prisma.adovation.findFirst({
       where: { teamLeaderEmail: email },
     });
     res.json(app);
@@ -215,11 +188,11 @@ export const checkTreasureHuntApplication = async (req: Request, res: Response) 
 };
 
 // Get a single application by email
-export const getSingleTreasureHuntApplication = async (req: Request, res: Response) => {
+export const getSingleAdovationApplication = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   try {
-    const app = await prisma.treasureHunt.findFirst({
+    const app = await prisma.adovation.findFirst({
       where: { teamLeaderEmail: email },
     });
     res.json(app);
@@ -228,8 +201,3 @@ export const getSingleTreasureHuntApplication = async (req: Request, res: Respon
     res.status(500).json({ message: 'Error fetching application.' });
   }
 };
-
-// Legacy functions for backward compatibility
-export const getTreasureApplications = getTreasureHuntApplications;
-export const createTreasureApplication = createTreasureHuntApplication;
-export const checkTreasureApplication = checkTreasureHuntApplication;
