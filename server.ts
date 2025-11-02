@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 /* eslint-disable prettier/prettier */
 import express from 'express';
+import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -31,9 +32,21 @@ async function connectToDatabase() {
 
 connectToDatabase();
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+function reloadWebsite() {
+  axios
+    .get('https://event-registrations-api.onrender.com')
+    .then(response => {
+      console.log('Time Noted for Website Update:', response.status);
+    })
+    .catch(error => {
+      console.error('Error reloading website:', error.message);
+    });
+}
+
+setInterval(reloadWebsite, 1000 * 60 * 10); // Reload every 10 minutes
+
+app.get('/', (_req, res) => {
+  res.send({ message: 'This is the event registrations API for E-Cell NIT Silchar.', status: 200 });
 });
 
 // Route configurations
