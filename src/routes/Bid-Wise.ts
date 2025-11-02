@@ -1,18 +1,17 @@
 import express from 'express';
 import {
-  createBidWise,
-  getBidWiseTeams,
-  checkBidWise,
-  getSingleBidWise,
-  deleteBidWise,
+  getBidWiseApplications,
+  createBidWiseApplication,
+  checkBidWiseApplication,
+  getSingleBidWiseApplication,
 } from '../controllers/Bid-Wise';
 
 const router = express.Router();
 
-router.post('/register', createBidWise);
-router.get('/all', getBidWiseTeams);
-router.post('/check', checkBidWise);
-router.post('/single', getSingleBidWise);
-router.delete('/delete', deleteBidWise);
+// New routes for BID-WISE
+router.get('/all', getBidWiseApplications);
+router.post('/register', createBidWiseApplication);
+router.post('/check', checkBidWiseApplication);
+router.post('/single', getSingleBidWiseApplication);
 
 export default router;

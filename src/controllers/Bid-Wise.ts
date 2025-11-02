@@ -1,136 +1,208 @@
 /* eslint-disable no-console */
-import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
+import prisma from '../../prisma/prismaClient';
 import sendEmail from '../utils/sendEmail';
 
-const prisma = new PrismaClient();
+interface TeamMember {
+  name: string;
+  phone: string;
+  email?: string;
+  scholarId?: string;
+}
 
-export const getBidWiseTeams = async (req: Request, res: Response) => {
+// Fetch all BID-WISE applications
+export const getBidWiseApplications = async (req: Request, res: Response) => {
   try {
-    const teams = await prisma.bidWise.findMany();
-    res.json(teams);
+    const applications = await prisma.bidWise.findMany();
+    res.json(applications);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Something went wrong!' });
+    res.status(500).json({ message: 'Failed to fetch applications.' });
   }
 };
 
-export const createBidWise = async (req: Request, res: Response) => {
-  try {
-    const { eventId, teamName, college, leader, members } = req.body;
+// Create a new BID-WISE application
+export const createBidWiseApplication = async (req: Request, res: Response) => {
+  const {
+    teamName,
+    teamLeaderName,
+    teamLeaderEmail,
+    teamLeaderPhone,
+    teamLeaderScholarId,
+    collegeType,
+    collegeName,
+    department,
+    year,
+    teamMembers,
+  } = req.body;
 
-    const exists = await prisma.bidWise.findFirst({
-      where: { leader: { email: leader.email } },
+  try {
+    // Validate required fields
+    if (!teamName || !teamLeaderName || !teamLeaderEmail || !teamLeaderPhone) {
+      return res.status(400).json({ message: 'Required fields are missing.' });
+    }
+
+    // Validate college information
+    if (collegeType === 'other' && !collegeName) {
+      return res.status(400).json({ message: 'College name is required for external colleges.' });
+    }
+
+    if (collegeType === 'nit_silchar' && !teamLeaderScholarId) {
+      return res.status(400).json({ message: 'Scholar ID is required for NIT Silchar students.' });
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(teamLeaderEmail)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    // Phone validation
+    if (teamLeaderPhone.length !== 10) {
+      return res.status(400).json({ message: 'Please enter a valid 10-digit phone number.' });
+    }
+
+    // Team size validation (3-5 members including leader)
+    if (!teamMembers || teamMembers.length < 2 || teamMembers.length > 4) {
+      return res.status(400).json({ message: 'Team must have 3-5 members (including leader).' });
+    }
+
+    // Validate team members
+    for (const member of teamMembers) {
+      if (!member.name || !member.phone) {
+        return res.status(400).json({ message: 'All team members must have name and phone.' });
+      }
+      if (collegeType === 'nit_silchar' && !member.scholarId) {
+        return res
+          .status(400)
+          .json({ message: 'Scholar ID is required for all NIT Silchar team members.' });
+      }
+    }
+
+    // Prevent duplicate submissions
+    const existing = await prisma.bidWise.findFirst({
+      where: { teamLeaderEmail },
     });
 
-    if (exists) {
+    if (existing) {
       return res.status(400).json({ message: 'You have already registered for this event.' });
     }
 
-    const requiredLeaderFields = ['fullName', 'email', 'contact', 'scholarId'];
-    for (const field of requiredLeaderFields) {
-      if (!leader[field]) {
-        return res.status(400).json({ message: `Leader ${field} is required.` });
-      }
-    }
+    // Check if any team member (including leader) is already registered for this event
+    const allMembers = [
+      { name: teamLeaderName, phone: teamLeaderPhone, email: teamLeaderEmail },
+      ...teamMembers.map((member: TeamMember) => ({
+        name: member.name,
+        phone: member.phone,
+        email: member.email || null,
+      })),
+    ];
 
-    if (!members || members.length < 2 || members.length > 4) {
-      return res.status(400).json({ message: 'Team must have 2–4 members.' });
-    }
-
-    members.forEach((m: any, i: number) => {
-      if (!m.fullName || !m.email || !m.scholarId) {
-        throw new Error(`Member ${i + 1} is missing fields.`);
-      }
-    });
-
-    const registration = await prisma.bidWise.create({
-      data: {
-        eventId,
-        teamName,
-        college,
-        leader: {
-          fullName: leader.fullName,
-          email: leader.email,
-          contact: leader.contact,
-          scholarId: leader.scholarId,
+    for (const member of allMembers) {
+      const existingMember = await prisma.bidWiseMembers.findFirst({
+        where: {
+          OR: [
+            { memberPhone: member.phone, memberName: member.name },
+            { memberPhone: member.phone },
+            { memberName: member.name, memberPhone: member.phone },
+          ],
         },
-        members: members.map((m: any) => ({
-          fullName: m.fullName,
-          email: m.email,
-          scholarId: m.scholarId,
+      });
+
+      if (existingMember) {
+        return res.status(400).json({
+          message: `Team member "${member.name}" is already registered with team "${existingMember.teamName}" for this event.`,
+        });
+      }
+    }
+
+    // Create a new application entry
+    const newApp = await prisma.bidWise.create({
+      data: {
+        teamName,
+        teamLeaderName,
+        teamLeaderEmail,
+        teamLeaderPhone,
+        teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
+        collegeType,
+        collegeName: collegeType === 'other' ? collegeName : null,
+        department,
+        year,
+        teamMembers: teamMembers.map((member: TeamMember) => ({
+          name: member.name,
+          phone: member.phone,
         })),
       },
     });
 
-    const subject = 'BidWise Registration Successful';
-    const text = `
-      <h3>Your Bid-Wise Team Registration is Successful!</h3>
-      <p>Your team "${teamName}" has been registered.</p>
-      <p>We will contact you with updates soon.</p>
-      <p><strong>Good luck!</strong><br />E-Cell NIT JH Team</p>
-    `;
+    if (newApp) {
+      // Store all team members in the BidWiseMembers collection
+      const memberRecords = allMembers.map(member => ({
+        memberName: member.name,
+        memberEmail: member.email,
+        memberPhone: member.phone,
+        teamName: teamName,
+      }));
 
-    sendEmail(leader.email, subject, text, undefined);
+      await prisma.bidWiseMembers.createMany({
+        data: memberRecords,
+      });
 
-    res.status(200).json({
-      message: 'Registration submitted successfully!',
-      registration,
-    });
-  } catch (error: any) {
-    console.error(error);
-    res.status(500).json({ message: error.message || 'Something went wrong!' });
-  }
-};
+      const subject = 'BID-WISE Registration Successful';
+      const text = `
+      <h3>Thank you for registering for BID-WISE!</h3>
+      <p>Your team "${teamName}" has been successfully registered.</p>
+      <p>We've received your registration and will get back to you soon with further details.</p>
+      <p>Meanwhile, you can join our WhatsApp group for updates:
+      <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE">Join Group</a></p>
+      <p><strong>Best of luck,</strong><br/>E-Cell NIT Silchar Team</p>
+      `;
 
-export const checkBidWise = async (req: Request, res: Response) => {
-  const { email } = req.body;
+      sendEmail(teamLeaderEmail, subject, text, undefined);
 
-  try {
-    const entry = await prisma.bidWise.findFirst({
-      where: { leader: { email } },
-    });
-
-    res.json(entry);
+      res.status(200).json({
+        message: 'Registration submitted successfully!',
+        registration: newApp,
+      });
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Something went wrong!' });
   }
 };
 
-export const getSingleBidWise = async (req: Request, res: Response) => {
+// Check if a user has already applied
+export const checkBidWiseApplication = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   try {
-    const entry = await prisma.bidWise.findFirst({
-      where: { leader: { email } },
+    const app = await prisma.bidWise.findFirst({
+      where: { teamLeaderEmail: email },
     });
-
-    res.json(entry);
+    res.json(app);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Something went wrong!' });
+    res.status(500).json({ message: 'Error checking application.' });
   }
 };
 
-export const deleteBidWise = async (req: Request, res: Response) => {
+// Get a single application by email
+export const getSingleBidWiseApplication = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   try {
-    const deleted = await prisma.bidWise.deleteMany({
-      where: { leader: { email } },
+    const app = await prisma.bidWise.findFirst({
+      where: { teamLeaderEmail: email },
     });
-
-    await sendEmail(
-      email,
-      'BidWise Registration Deleted',
-      'Your BidWise registration has been deleted.',
-      undefined,
-    );
-
-    res.json({ message: 'Registration deleted successfully.', deleted });
+    res.json(app);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Something went wrong!' });
+    res.status(500).json({ message: 'Error fetching application.' });
   }
 };
+
+// Legacy functions for backward compatibility
+export const getBidWiseTeams = getBidWiseApplications;
+export const createBidWise = createBidWiseApplication;
+export const checkBidWise = checkBidWiseApplication;
+export const getSingleBidWise = getSingleBidWiseApplication;

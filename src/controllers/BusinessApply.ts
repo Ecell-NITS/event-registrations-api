@@ -1,55 +1,170 @@
 /* eslint-disable no-console */
-import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
+import prisma from '../../prisma/prismaClient';
 import sendEmail from '../utils/sendEmail';
 
-const prisma = new PrismaClient();
+interface TeamMember {
+  name: string;
+  phone: string;
+  email?: string;
+  scholarId?: string;
+}
 
-// Fetch all event applications
-export const getEventApplications = async (req: Request, res: Response) => {
-  const applications = await prisma.eventApplication.findMany();
-  res.json(applications);
+// Fetch all business hackathon applications
+export const getBusinessHackathonApplications = async (req: Request, res: Response) => {
+  try {
+    const applications = await prisma.businessHackathon.findMany();
+    res.json(applications);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Failed to fetch applications.' });
+  }
 };
 
-// Create a new event application
-export const createEventApplication = async (req: Request, res: Response) => {
-  const { name, email, phone, college, ideaBrief, teamName } = req.body;
+// Create a new business hackathon application
+export const createBusinessHackathonApplication = async (req: Request, res: Response) => {
+  const {
+    teamName,
+    teamLeaderName,
+    teamLeaderEmail,
+    teamLeaderPhone,
+    teamLeaderScholarId,
+    collegeType,
+    collegeName,
+    department,
+    year,
+    teamMembers,
+  } = req.body;
 
   try {
+    // Validate required fields
+    if (!teamName || !teamLeaderName || !teamLeaderEmail || !teamLeaderPhone) {
+      return res.status(400).json({ message: 'Required fields are missing.' });
+    }
+
+    // Validate college information
+    if (collegeType === 'other' && !collegeName) {
+      return res.status(400).json({ message: 'College name is required for external colleges.' });
+    }
+
+    if (collegeType === 'nit_silchar' && !teamLeaderScholarId) {
+      return res.status(400).json({ message: 'Scholar ID is required for NIT Silchar students.' });
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(teamLeaderEmail)) {
+      return res.status(400).json({ message: 'Please enter a valid email address.' });
+    }
+
+    // Phone validation
+    if (teamLeaderPhone.length !== 10) {
+      return res.status(400).json({ message: 'Please enter a valid 10-digit phone number.' });
+    }
+
+    // Team size validation (3-5 members including leader)
+    if (!teamMembers || teamMembers.length < 2 || teamMembers.length > 4) {
+      return res.status(400).json({ message: 'Team must have 3-5 members (including leader).' });
+    }
+
+    // Validate team members
+    for (const member of teamMembers) {
+      if (!member.name || !member.phone) {
+        return res.status(400).json({ message: 'All team members must have name and phone.' });
+      }
+      if (collegeType === 'nit_silchar' && !member.scholarId) {
+        return res
+          .status(400)
+          .json({ message: 'Scholar ID is required for all NIT Silchar team members.' });
+      }
+    }
+
     // Prevent duplicate submissions
-    const existing = await prisma.eventApplication.findFirst({
-      where: { email },
+    const existing = await prisma.businessHackathon.findFirst({
+      where: { teamLeaderEmail },
     });
 
     if (existing) {
-      return res.status(400).json({ message: 'You have already applied.' });
+      return res.status(400).json({ message: 'You have already registered for this event.' });
+    }
+
+    // Check if any team member (including leader) is already registered for this event
+    const allMembers = [
+      { name: teamLeaderName, phone: teamLeaderPhone, email: teamLeaderEmail },
+      ...teamMembers.map((member: TeamMember) => ({
+        name: member.name,
+        phone: member.phone,
+        email: member.email || null,
+      })),
+    ];
+
+    for (const member of allMembers) {
+      const existingMember = await prisma.businessHackathonMembers.findFirst({
+        where: {
+          OR: [
+            { memberPhone: member.phone, memberName: member.name },
+            { memberPhone: member.phone },
+            { memberName: member.name, memberPhone: member.phone },
+          ],
+        },
+      });
+
+      if (existingMember) {
+        return res.status(400).json({
+          message: `Team member "${member.name}" is already registered with team "${existingMember.teamName}" for this event.`,
+        });
+      }
     }
 
     // Create a new application entry
-    const newApp = await prisma.eventApplication.create({
+    const newApp = await prisma.businessHackathon.create({
       data: {
-        name,
-        email,
-        phone,
-        college,
-        ideaBrief,
         teamName,
+        teamLeaderName,
+        teamLeaderEmail,
+        teamLeaderPhone,
+        teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
+        collegeType,
+        collegeName: collegeType === 'other' ? collegeName : null,
+        department,
+        year,
+        teamMembers: teamMembers.map((member: TeamMember) => ({
+          name: member.name,
+          phone: member.phone,
+          scholarId: collegeType === 'nit_silchar' ? member.scholarId : null,
+        })),
       },
     });
 
     if (newApp) {
-      const subject = 'Business Hackathon Application';
+      // Store all team members in the BusinessHackathonMembers collection
+      const memberRecords = allMembers.map(member => ({
+        memberName: member.name,
+        memberEmail: member.email,
+        memberPhone: member.phone,
+        teamName: teamName,
+      }));
+
+      await prisma.businessHackathonMembers.createMany({
+        data: memberRecords,
+      });
+
+      const subject = 'Business Hackathon Registration Successful';
       const text = `
-      <h3>Thank you for applying for the Business Hackathon!</h3>
-      <p>We’ve received your application and will get back to you soon.</p>
+      <h3>Thank you for registering for the Business Hackathon!</h3>
+      <p>Your team "${teamName}" has been successfully registered.</p>
+      <p>We've received your registration and will get back to you soon with further details.</p>
       <p>Meanwhile, you can join our WhatsApp group for updates:
       <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE">Join Group</a></p>
-      <p><strong>Best of luck,</strong><br/>E-Cell NIT JH Team</p>
+      <p><strong>Best of luck,</strong><br/>E-Cell NIT Silchar Team</p>
       `;
 
-      sendEmail(email, subject, text, undefined);
+      sendEmail(teamLeaderEmail, subject, text, undefined);
 
-      res.status(200).json({ message: 'Application submitted successfully!' });
+      res.status(200).json({
+        message: 'Registration submitted successfully!',
+        registration: newApp,
+      });
     }
   } catch (error) {
     console.error(error);
@@ -58,36 +173,37 @@ export const createEventApplication = async (req: Request, res: Response) => {
 };
 
 // Check if a user has already applied
-export const checkEventApplication = async (req: Request, res: Response) => {
+export const checkBusinessHackathonApplication = async (req: Request, res: Response) => {
   const { email } = req.body;
-  const app = await prisma.eventApplication.findFirst({
-    where: { email },
-  });
-  res.json(app);
+
+  try {
+    const app = await prisma.businessHackathon.findFirst({
+      where: { teamLeaderEmail: email },
+    });
+    res.json(app);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error checking application.' });
+  }
 };
 
 // Get a single application by email
-export const getSingleEventApplication = async (req: Request, res: Response) => {
+export const getSingleBusinessHackathonApplication = async (req: Request, res: Response) => {
   const { email } = req.body;
-  const app = await prisma.eventApplication.findUnique({
-    where: { email },
-  });
-  res.json(app);
+
+  try {
+    const app = await prisma.businessHackathon.findFirst({
+      where: { teamLeaderEmail: email },
+    });
+    res.json(app);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error fetching application.' });
+  }
 };
 
-// Delete an application
-export const deleteEventApplication = async (req: Request, res: Response) => {
-  const { email } = req.body;
-  const deleted = await prisma.eventApplication.delete({
-    where: { email },
-  });
-
-  await sendEmail(
-    email,
-    'Application Deleted',
-    'Your hackathon application has been deleted. If this wasn’t you, please contact us immediately.',
-    undefined,
-  );
-
-  res.json({ message: 'Application deleted successfully.', deleted });
-};
+// Legacy functions for backward compatibility
+export const getEventApplications = getBusinessHackathonApplications;
+export const createEventApplication = createBusinessHackathonApplication;
+export const checkEventApplication = checkBusinessHackathonApplication;
+export const getSingleEventApplication = getSingleBusinessHackathonApplication;

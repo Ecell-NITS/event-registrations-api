@@ -1,16 +1,17 @@
 import { Router } from 'express';
 import {
-  createAdovationApplication,
   getAdovationApplications,
+  createAdovationApplication,
   checkAdovationApplication,
-  deleteAdovationApplication,
+  getSingleAdovationApplication,
 } from '../controllers/Adovation';
 
 const router = Router();
 
-router.post('/apply', createAdovationApplication);
+// New routes for Adovation
 router.get('/all', getAdovationApplications);
+router.post('/register', createAdovationApplication);
 router.post('/check', checkAdovationApplication);
-router.delete('/delete', deleteAdovationApplication);
+router.post('/single', getSingleAdovationApplication);
 
 export default router;
