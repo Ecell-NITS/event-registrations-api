@@ -7,17 +7,19 @@ if (!process.env.EMAIL_ECELL || !process.env.EMAIL_PWD_ECELL) {
 }
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false, // true for 465, false for 587
   auth: {
-    user: process.env.EMAIL_ECELL,
-    pass: process.env.EMAIL_PWD_ECELL,
+    user: process.env.BREVO_EMAIL,
+    pass: process.env.BREVO_SMTP_KEY,
   },
 });
 
 const sendEmail = async (to: string, subject: string, text: string, html: string) => {
   try {
     const info = await transporter.sendMail({
-      from: `"E-Cell NIT Silchar" <${process.env.EMAIL_ECELL}>`,
+      from: `"ECELL NIT Silchar" <${process.env.EMAIL_ECELL}>`,
       to,
       subject,
       text,
