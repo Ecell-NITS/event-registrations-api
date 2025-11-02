@@ -7,6 +7,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Otp {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String
+  otp       String
+  createdAt DateTime @default(now())
+}
+
 // Business Hackathon Event (Event ID: 1)
 model BusinessHackathon {
   id                    String   @id @default(auto()) @map("_id") @db.ObjectId
