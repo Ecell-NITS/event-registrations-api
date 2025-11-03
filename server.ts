@@ -18,7 +18,14 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(cors());
+//use cors for client url set in env if not set then allow all origins
+const allowedOrigin = process.env.CLIENT_URL || '*';
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
+  }),
+);
 
 async function connectToDatabase() {
   try {
