@@ -150,7 +150,7 @@ export const createBusinessHackathonApplication = async (req: Request, res: Resp
       const text = `Thank you for registering for the Business Hackathon! Your team "${teamName}" has been successfully registered.
       We've received your registration and will get back to you soon with further details.
       Meanwhile, you can join our WhatsApp group for updates:
-      <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE">Join Group</a>
+      <a href="https://chat.whatsapp.com/IWEUUgfo7vNA4HLjuJcvFk">Join Group</a>
       Best of luck. E-Cell NIT SilcharTeam`;
       const html = `
 <!DOCTYPE html>
@@ -189,7 +189,7 @@ export const createBusinessHackathonApplication = async (req: Request, res: Resp
           </p>
 
           <div style="margin:30px 0;text-align:center;">
-            <a href="https://chat.whatsapp.com/YOUR_GROUP_LINK_HERE"
+            <a href="https://chat.whatsapp.com/IWEUUgfo7vNA4HLjuJcvFk"
               style="background-color:#224259;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;display:inline-block;font-weight:500;">
               Join WhatsApp Group
             </a>
