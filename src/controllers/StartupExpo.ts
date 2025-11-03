@@ -166,7 +166,7 @@ export const createStartupExpoApplication = async (req: Request, res: Response) 
       const text = `Thank you for registering for the Startup Expo! Your team "${teamName}" has been successfully registered.
       We've received your registration and will get back to you soon with further details.
       Meanwhile, you can join our WhatsApp group for updates:
-      <a href="https://chat.whatsapp.com/IWEUUgfo7vNA4HLjuJcvFk">Join Group</a>
+      <a href="https://chat.whatsapp.com/BTwQrnsh0uWAYSYc6ooqm0">Join Group</a>
       Best of luck. E-Cell NIT Silchar Team`;
       const html = `
 <!DOCTYPE html>
@@ -205,7 +205,7 @@ export const createStartupExpoApplication = async (req: Request, res: Response) 
           </p>
 
           <div style="margin:30px 0;text-align:center;">
-            <a href="https://chat.whatsapp.com/IWEUUgfo7vNA4HLjuJcvFk"
+            <a href="https://chat.whatsapp.com/BTwQrnsh0uWAYSYc6ooqm0"
               style="background-color:#224259;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;display:inline-block;font-weight:500;">
               Join WhatsApp Group
             </a>
