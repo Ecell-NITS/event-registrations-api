@@ -9,6 +9,7 @@ import BusinessApply from './src/routes/BusinessApply';
 import treasureApply from './src/routes/TreasureApply';
 import BidWiseApply from './src/routes/Bid-Wise';
 import AdovationApply from './src/routes/Adovations';
+import StartupExpoApply from './src/routes/StartupExpo';
 import verifyOTP from './src/routes/verifyOTP';
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.use('/business', BusinessApply);
 app.use('/treasure', treasureApply);
 app.use('/bid-wise', BidWiseApply);
 app.use('/adovations', AdovationApply);
+app.use('/startup-expo', StartupExpoApply);
 app.use('/verification', verifyOTP);
 
 app.listen(PORT, () => {
