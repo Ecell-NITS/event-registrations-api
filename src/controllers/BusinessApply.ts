@@ -106,7 +106,8 @@ export const createBusinessHackathonApplication = async (req: Request, res: Resp
     if (existingMembers.length > 0) {
       const conflict = existingMembers[0];
       return res.status(400).json({
-        message: `Member "${conflict.memberName}" is already registered with team "${conflict.teamName}".`,
+        //just mention mobile number conflict in the message not name
+        message: `Member with mobile number "${conflict.memberPhone}" is already registered with team "${conflict.teamName}".`,
       });
     }
 
