@@ -101,28 +101,6 @@ export const createStartupExpoApplication = async (req: Request, res: Response) 
       return res.status(400).json({ message: 'You have already registered for this event.' });
     }
 
-    // Check if any team member (including leader) is already registered for this event
-    const allMembers = [
-      { name: teamLeaderName, phone: teamLeaderPhone, email: teamLeaderEmail },
-      ...(teamMembers || []).map((member: TeamMember) => ({
-        name: member.name,
-        phone: member.phone,
-        email: member.email || null,
-      })),
-    ];
-
-    const existingMembers = await prisma.startupExpoMembers.findMany({
-      where: {
-        memberPhone: { in: allMembers.map(m => m.phone) },
-      },
-    });
-    if (existingMembers.length > 0) {
-      const conflict = existingMembers[0];
-      return res.status(400).json({
-        message: `Member "${conflict.memberName}" is already registered with team "${conflict.teamName}".`,
-      });
-    }
-
     // Create a new application entry
     const newApp = await prisma.$transaction(async tx => {
       const createdApp = await tx.startupExpo.create({
@@ -145,19 +123,6 @@ export const createStartupExpoApplication = async (req: Request, res: Response) 
           })),
         },
       });
-
-      // Store all team members in the StartupExpoMembers collection
-      const memberRecords = allMembers.map(member => ({
-        memberName: member.name,
-        memberEmail: member.email,
-        memberPhone: member.phone,
-        teamName: teamName,
-      }));
-
-      await prisma.startupExpoMembers.createMany({
-        data: memberRecords,
-      });
-
       return createdApp;
     });
 

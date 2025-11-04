@@ -74,7 +74,9 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
 
     // Team size validation (2-4 members including leader)
     if (!teamMembers || teamMembers.length < 1 || teamMembers.length > 3) {
-      return res.status(400).json({ message: 'Team must have 2-4 members (including leader).' });
+      return res
+        .status(400)
+        .json({ message: 'Team must have 3-5 members (including leader and vice-captain).' });
     }
 
     // Validate team members

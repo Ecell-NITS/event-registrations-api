@@ -179,16 +179,3 @@ model AdovationMembers {
   // Compound index to prevent duplicate registrations
   @@unique([memberPhone, memberName])
 }
-
-// Startup Expo Members
-model StartupExpoMembers {
-  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  memberName            String
-  memberEmail           String?
-  memberPhone           String
-  teamName              String
-  createdAt             DateTime @default(now())
-  
-  // Compound index to prevent duplicate registrations
-  @@unique([memberPhone, memberName])
-}
