@@ -10,10 +10,10 @@ interface TeamMember {
   scholarId?: string;
 }
 
-// Fetch all treasure hunt applications
-export const getTreasureHuntApplications = async (req: Request, res: Response) => {
+// Fetch all startup expo applications
+export const getStartupExpoApplications = async (req: Request, res: Response) => {
   try {
-    const applications = await prisma.treasureHunt.findMany();
+    const applications = await prisma.startupExpo.findMany();
     res.json(applications);
   } catch (error) {
     console.error(error);
@@ -21,17 +21,16 @@ export const getTreasureHuntApplications = async (req: Request, res: Response) =
   }
 };
 
-// Create a new treasure hunt application
-export const createTreasureHuntApplication = async (req: Request, res: Response) => {
+// Create a new startup expo application
+export const createStartupExpoApplication = async (req: Request, res: Response) => {
   const {
     teamName,
     teamLeaderName,
     teamLeaderEmail,
     teamLeaderPhone,
     teamLeaderScholarId,
-    teamViceCaptainName,
-    teamViceCaptainPhone,
-    teamViceCaptainScholarId,
+    businessDescription,
+    driveLink,
     collegeType,
     collegeName,
     department,
@@ -46,8 +45,7 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
       !teamLeaderName ||
       !teamLeaderEmail ||
       !teamLeaderPhone ||
-      !teamViceCaptainName ||
-      !teamViceCaptainPhone
+      !businessDescription
     ) {
       return res.status(400).json({ message: 'Required fields are missing.' });
     }
@@ -72,27 +70,30 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
       return res.status(400).json({ message: 'Please enter a valid 10-digit phone number.' });
     }
 
-    // Team size validation (2-4 members including leader)
-    if (!teamMembers || teamMembers.length < 1 || teamMembers.length > 3) {
-      return res
-        .status(400)
-        .json({ message: 'Team must have 3-5 members (including leader and vice-captain).' });
+    // URL validation for driveLink if provided
+    if (driveLink) {
+      const urlRegex = /^https?:\/\/.+/;
+      if (!urlRegex.test(driveLink)) {
+        return res.status(400).json({ message: 'Please enter a valid URL for the drive link.' });
+      }
     }
 
-    // Validate team members
-    for (const member of teamMembers) {
-      if (!member.name) {
-        return res.status(400).json({ message: 'All team members must have a name.' });
-      }
-      if (collegeType === 'nit_silchar' && !member.scholarId) {
-        return res
-          .status(400)
-          .json({ message: 'Scholar ID is required for all NIT Silchar team members.' });
+    // Team members validation (optional for startup expo - can be 1 to unlimited)
+    if (teamMembers && teamMembers.length > 0) {
+      for (const member of teamMembers) {
+        if (!member.name || !member.phone) {
+          return res.status(400).json({ message: 'All team members must have name and phone.' });
+        }
+        if (collegeType === 'nit_silchar' && !member.scholarId) {
+          return res
+            .status(400)
+            .json({ message: 'Scholar ID is required for all NIT Silchar team members.' });
+        }
       }
     }
 
     // Prevent duplicate submissions
-    const existing = await prisma.treasureHunt.findFirst({
+    const existing = await prisma.startupExpo.findFirst({
       where: { teamLeaderEmail },
     });
 
@@ -100,110 +101,45 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
       return res.status(400).json({ message: 'You have already registered for this event.' });
     }
 
-    //Run a check to see if vice captain is already registered
-    const existingViceCaptain = await prisma.treasureHunt.findFirst({
-      where: { teamViceCaptainPhone },
-    });
-
-    if (existingViceCaptain) {
-      return res
-        .status(400)
-        .json({ message: 'The vice captain is already registered with another team.' });
-    }
-
-    //NOT REQUIRED AS TEAM MEMBERS NAME CAN BE SAME IN DIFFERENT TEAMS
-    // // Check if any team member (including leader and vice captain) is already registered for this event
-    // const allMembers = [
-    //   { name: teamLeaderName, phone: teamLeaderPhone, email: teamLeaderEmail },
-    //   { name: teamViceCaptainName, phone: teamViceCaptainPhone, email: null },
-    //   ...teamMembers.map((member: TeamMember) => ({
-    //     name: member.name,
-    //     phone: null, // Treasure hunt members don't have phone in the original schema
-    //     email: null,
-    //   })),
-    // ];
-
-    // for (const member of allMembers) {
-    //   const existingMember = await prisma.treasureHuntMembers.findFirst({
-    //     where: {
-    //       OR: [
-    //         { memberName: member.name, memberPhone: member.phone },
-    //         { memberName: member.name },
-    //         ...(member.phone ? [{ memberPhone: member.phone }] : []),
-    //       ],
-    //     },
-    //   });
-
-    //   if (existingMember) {
-    //     return res.status(400).json({
-    //       message: `Team member "${member.name}" is already registered with team "${existingMember.teamName}" for this event.`,
-    //     });
-    //   }
-    // }
-    //NOT REQUIRED AS TEAM MEMBERS NAME CAN BE SAME IN DIFFERENT TEAMS
-
     // Create a new application entry
-
-    const result = await prisma.$transaction(async tx => {
-      const newApp = await tx.treasureHunt.create({
+    const newApp = await prisma.$transaction(async tx => {
+      const createdApp = await tx.startupExpo.create({
         data: {
           teamName,
           teamLeaderName,
           teamLeaderEmail,
           teamLeaderPhone,
           teamLeaderScholarId: collegeType === 'nit_silchar' ? teamLeaderScholarId : null,
-          teamViceCaptainName,
-          teamViceCaptainPhone,
-          teamViceCaptainScholarId: collegeType === 'nit_silchar' ? teamViceCaptainScholarId : null,
+          businessDescription,
+          driveLink: driveLink || null,
           collegeType,
           collegeName: collegeType === 'other' ? collegeName : null,
           department,
           year,
-          teamMembers: teamMembers.map((member: TeamMember) => ({
+          teamMembers: (teamMembers || []).map((member: TeamMember) => ({
             name: member.name,
+            phone: member.phone,
             scholarId: collegeType === 'nit_silchar' ? member.scholarId : null,
           })),
         },
       });
-      const membersToStore = [
-        {
-          memberName: teamLeaderName,
-          memberEmail: teamLeaderEmail,
-          memberPhone: teamLeaderPhone,
-          teamName,
-        },
-        {
-          memberName: teamViceCaptainName,
-          memberEmail: null,
-          memberPhone: teamViceCaptainPhone,
-          teamName,
-        },
-        ...teamMembers.map((member: TeamMember) => ({
-          memberName: member.name,
-          memberEmail: null,
-          memberPhone: null,
-          teamName,
-        })),
-      ];
-      await tx.treasureHuntMembers.createMany({
-        data: membersToStore,
-      });
-      return newApp;
+      return createdApp;
     });
 
-    const subject = 'Treasure Hunt Registration Successful';
-    const text = `Thank you for registering for the Treasure Hunt! Your team "${teamName}" has been successfully registered.
+    if (newApp) {
+      const subject = 'Startup Expo Registration Successful';
+      const text = `Thank you for registering for the Startup Expo! Your team "${teamName}" has been successfully registered.
       We've received your registration and will get back to you soon with further details.
       Meanwhile, you can join our WhatsApp group for updates:
-      <a href="https://chat.whatsapp.com/F1fZsCel6i85ijbRPNGMFe">Join Group</a>
-      Best of luck.E-Cell NIT SilcharTeam`;
-    const html = `
+      <a href="https://chat.whatsapp.com/BTwQrnsh0uWAYSYc6ooqm0">Join Group</a>
+      Best of luck. E-Cell NIT Silchar Team`;
+      const html = `
 <!DOCTYPE html>
 <html lang="en" style="margin:0;padding:0;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Treasure Hunt Registration</title>
+    <title>Startup Expo Registration</title>
   </head>
   <body style="margin:0;padding:0;background-color:#f4f6f9;font-family:'Poppins',Arial,Helvetica,sans-serif;">
     <table align="center" width="100%" cellpadding="0" cellspacing="0" role="presentation"
@@ -214,7 +150,7 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
         <td style="background-color:#224259;text-align:center;padding:24px 16px;">
           <img src="https://res.cloudinary.com/ecell/image/upload/v1762102444/ecell-logo-bw2_sayvqp_htrv0f.png" alt="E-Cell NIT Silchar" width="60" style="margin-bottom:10px;">
           <h2 style="color:#ffffff;margin:0;font-size:20px;letter-spacing:0.5px;">E-Cell NIT Silchar</h2>
-          <p style="color:#cfd8e3;margin:5px 0 0;font-size:14px;">Treasure Hunt 2025</p>
+          <p style="color:#cfd8e3;margin:5px 0 0;font-size:14px;">Startup Expo 2025</p>
         </td>
       </tr>
 
@@ -223,25 +159,25 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
         <td style="padding:32px 40px;color:#1a1a1a;">
           <h3 style="color:#224259;margin-top:0;">Thank you for registering!</h3>
           <p style="line-height:1.6;color:#333;">
-            Dear Participant,
+            Dear Entrepreneur,
           </p>
           <p style="line-height:1.6;color:#333;">
             Your team <strong>"${teamName}"</strong> has been successfully registered for the
-            <strong>Treasure Hunt</strong>.
+            <strong>Startup Expo</strong>.
           </p>
           <p style="line-height:1.6;color:#333;">
-            We’ve received your registration and will get back to you soon with event details, timelines, and next steps.
+            We've received your business idea and will get back to you soon with event details, exhibition guidelines, and next steps.
           </p>
 
           <div style="margin:30px 0;text-align:center;">
-            <a href="https://chat.whatsapp.com/F1fZsCel6i85ijbRPNGMFe"
+            <a href="https://chat.whatsapp.com/BTwQrnsh0uWAYSYc6ooqm0"
               style="background-color:#224259;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:6px;display:inline-block;font-weight:500;">
               Join WhatsApp Group
             </a>
           </div>
 
           <p style="line-height:1.6;color:#333;">
-            Meanwhile, stay connected and follow our updates on social media!
+            Get ready to showcase your innovative startup idea and connect with investors, mentors, and fellow entrepreneurs!
           </p>
 
           <p style="margin-top:30px;line-height:1.6;color:#333;">
@@ -271,15 +207,17 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
     </table>
   </body>
 </html>`;
-    try {
-      await sendEmail(teamLeaderEmail, subject, text, html);
-    } catch (error) {
-      console.error('Error sending email for Treasure Hunt Registration:', error);
+      try {
+        await sendEmail(teamLeaderEmail, subject, text, html);
+      } catch (error) {
+        console.error('Error sending email for Startup Expo Registration:', error);
+      }
+
+      res.status(200).json({
+        message: 'Registration submitted successfully!',
+        registration: newApp,
+      });
     }
-    res.status(200).json({
-      message: 'Registration submitted successfully!',
-      registration: result,
-    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Something went wrong!' });
@@ -287,11 +225,11 @@ export const createTreasureHuntApplication = async (req: Request, res: Response)
 };
 
 // Check if a user has already applied
-export const checkTreasureHuntApplication = async (req: Request, res: Response) => {
+export const checkStartupExpoApplication = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   try {
-    const app = await prisma.treasureHunt.findFirst({
+    const app = await prisma.startupExpo.findFirst({
       where: { teamLeaderEmail: email },
     });
     res.json(app);
@@ -302,11 +240,11 @@ export const checkTreasureHuntApplication = async (req: Request, res: Response) 
 };
 
 // Get a single application by email
-export const getSingleTreasureHuntApplication = async (req: Request, res: Response) => {
+export const getSingleStartupExpoApplication = async (req: Request, res: Response) => {
   const { email } = req.body;
 
   try {
-    const app = await prisma.treasureHunt.findFirst({
+    const app = await prisma.startupExpo.findFirst({
       where: { teamLeaderEmail: email },
     });
     res.json(app);
@@ -315,8 +253,3 @@ export const getSingleTreasureHuntApplication = async (req: Request, res: Respon
     res.status(500).json({ message: 'Error fetching application.' });
   }
 };
-
-// Legacy functions for backward compatibility
-export const getTreasureApplications = getTreasureHuntApplications;
-export const createTreasureApplication = createTreasureHuntApplication;
-export const checkTreasureApplication = checkTreasureHuntApplication;
