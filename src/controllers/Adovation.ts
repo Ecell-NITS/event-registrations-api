@@ -62,9 +62,9 @@ export const createAdovationApplication = async (req: Request, res: Response) =>
       return res.status(400).json({ message: 'Please enter a valid 10-digit phone number.' });
     }
 
-    // Team size validation (3-5 members including leader)
-    if (!teamMembers || teamMembers.length < 2 || teamMembers.length > 4) {
-      return res.status(400).json({ message: 'Team must have 3-5 members (including leader).' });
+    // Team size validation (3-6 members including leader)
+    if (!teamMembers || teamMembers.length < 2 || teamMembers.length > 5) {
+      return res.status(400).json({ message: 'Team must have 3-6 members (including leader).' });
     }
 
     // Validate team members
