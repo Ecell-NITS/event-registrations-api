@@ -72,11 +72,6 @@ export const createBidWiseApplication = async (req: Request, res: Response) => {
       if (!member.name || !member.phone) {
         return res.status(400).json({ message: 'All team members must have name and phone.' });
       }
-      if (collegeType === 'nit_silchar' && !member.scholarId) {
-        return res
-          .status(400)
-          .json({ message: 'Scholar ID is required for all NIT Silchar team members.' });
-      }
     }
 
     // Prevent duplicate submissions
